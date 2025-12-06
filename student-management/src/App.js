@@ -6,12 +6,15 @@ function App() {
   const [students, setStudents] = useState([]);
   const [formData, setFormData] = useState({ name: '', age: '', stuClass: '' });
   
-  // State to track editing mode (null = add mode, string = edit mode)
+  // State tracking: null = Add Mode, string (ID) = Edit Mode
   const [editingId, setEditingId] = useState(null);
 
-  // Init: Fetch data
+  // Constants
+  const API_URL = 'http://localhost:5001/api/students';
+
+  // [READ] Init: Fetch data when component mounts
   useEffect(() => {
-    axios.get('http://localhost:5000/api/students')
+    axios.get(API_URL)
       .then(res => {
         setStudents(res.data);
         console.log("[INFO] Data fetched successfully");
@@ -19,39 +22,40 @@ function App() {
       .catch(err => console.error("[ERROR] Fetch failed:", err));
   }, []);
 
-  // Handler: Input change
+  // Handler: Input change (Controlled Component)
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   /**
-   * Action: Populate form with selected student data
-   * Switch to Edit Mode
+   * Action: Populate form for Editing
    */
   const startEditing = (student) => {
     setEditingId(student._id);
     setFormData({
       name: student.name,
       age: student.age,
-      stuClass: student.class
+      stuClass: student.class // Map DB 'class' -> Form 'stuClass'
     });
-    // Optional: Focus back to input for better UX
-    document.querySelector('input[name="name"]').focus();
   };
 
   /**
-   * Action: Cancel editing
-   * Reset form & mode
+   * Action: Reset Form & Exit Edit Mode
    */
-  const cancelEditing = () => {
+  const resetForm = () => {
     setEditingId(null);
     setFormData({ name: '', age: '', stuClass: '' });
   };
 
-  // Handler: Submit form (Decide Create or Update)
+  /**
+   * [CREATE] & [UPDATE] Handler
+   * Logic: Check 'editingId' to decide POST or PUT
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Prepare Payload (Ensure types match DB Schema)
     const payload = {
       name: formData.name,
       age: Number(formData.age),
@@ -60,25 +64,45 @@ function App() {
 
     try {
       if (editingId) {
-        // --- UPDATE FLOW ---
-        const res = await axios.put(`http://localhost:5001/api/students/${editingId}`, payload);
-        console.log("[INFO] Student updated:", res.data);
-
-        // Update local list without refetching
-        setStudents(prev => prev.map(s => s._id === editingId ? res.data : s));
+        // --- UPDATE FLOW (PUT) ---
+        const res = await axios.put(`${API_URL}/${editingId}`, payload);
         
-        // Reset mode
-        cancelEditing();
+        // Optimistic Update: Modify item in local state
+        setStudents(prev => prev.map(s => s._id === editingId ? res.data : s));
+        console.log("[INFO] Student updated:", res.data);
+        
+        resetForm();
       } else {
-        // --- CREATE FLOW ---
-        const res = await axios.post('http://localhost:5001/api/students', payload);
-        console.log("[INFO] Student added:", res.data);
+        // --- CREATE FLOW (POST) ---
+        const res = await axios.post(API_URL, payload);
+        
+        // Optimistic Update: Append new item
         setStudents(prev => [...prev, res.data]);
-        setFormData({ name: '', age: '', stuClass: '' });
+        console.log("[INFO] Student added:", res.data);
+        
+        resetForm();
       }
     } catch (err) {
       console.error("[ERROR] Submit failed:", err);
-      alert("Error: Check console for details.");
+      alert("Lỗi: Kiểm tra Console để biết chi tiết.");
+    }
+  };
+
+  /**
+   * [DELETE] Handler
+   */
+  const handleDelete = async (id) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa học sinh này không?")) return;
+
+    try {
+      await axios.delete(`${API_URL}/${id}`);
+      
+      // Update UI: Filter out deleted item
+      setStudents(prev => prev.filter(s => s._id !== id));
+      console.log(`[INFO] Deleted ID: ${id}`);
+    } catch (err) {
+      console.error("[ERROR] Delete failed:", err);
+      alert("Không thể xóa. Kiểm tra Console.");
     }
   };
 
@@ -86,7 +110,7 @@ function App() {
     <div className="App">
       <h1>Quản Lý Học Sinh</h1>
 
-      {/* Input Form (Reusable for both Add & Edit) */}
+      {/* --- FORM SECTION --- */}
       <form className="student-form" onSubmit={handleSubmit}>
         <input
           type="text"
@@ -116,44 +140,60 @@ function App() {
           style={{ flex: 1 }}
         />
         
-        {/* Dynamic Buttons */}
+        {/* Dynamic Buttons based on Mode */}
         {editingId ? (
           <>
             <button type="submit" className="btn-update">Cập nhật</button>
-            <button type="button" className="btn-cancel" onClick={cancelEditing}>Hủy</button>
+            <button type="button" className="btn-cancel" onClick={resetForm}>Hủy</button>
           </>
         ) : (
           <button type="submit">Thêm mới</button>
         )}
       </form>
 
-      {/* Data Table */}
+      {/* --- TABLE SECTION --- */}
       <table>
         <thead>
           <tr>
             <th>Họ Tên</th>
             <th>Tuổi</th>
             <th>Lớp</th>
-            <th style={{ width: '100px' }}>Thao tác</th>
+            <th style={{ width: "140px" }}>Thao tác</th>
           </tr>
         </thead>
         <tbody>
-          {students.map((s) => (
-            <tr key={s._id} className={editingId === s._id ? 'editing-row' : ''}>
-              <td>{s.name}</td>
-              <td>{s.age}</td>
-              <td>{s.class}</td>
-              <td>
-                <button 
-                  className="btn-icon" 
-                  onClick={() => startEditing(s)}
-                  disabled={editingId === s._id} // Disable if currently editing this row
-                >
-                  Sửa
-                </button>
+          {students.length > 0 ? (
+            students.map((s) => (
+              <tr key={s._id} className={editingId === s._id ? 'editing-row' : ''}>
+                <td>{s.name}</td>
+                <td>{s.age}</td>
+                <td>{s.class}</td>
+                <td>
+                  <button 
+                    className="btn-icon" 
+                    onClick={() => startEditing(s)}
+                    disabled={editingId === s._id}
+                    style={{ marginRight: '8px' }}
+                  >
+                    Sửa
+                  </button>
+                  <button 
+                    className="btn-delete"
+                    onClick={() => handleDelete(s._id)}
+                    disabled={editingId === s._id}
+                  >
+                    Xóa
+                  </button>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="4" style={{ textAlign: "center", color: "#5f6368" }}>
+                Chưa có dữ liệu hiển thị
               </td>
             </tr>
-          ))}
+          )}
         </tbody>
       </table>
     </div>

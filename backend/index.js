@@ -56,6 +56,27 @@ app.put('/api/students/:id', async (req, res) => {
     }
 });
 
+/**
+ * [DELETE] /api/students/:id
+ * Description: Hard delete record by ID
+ */
+app.delete('/api/students/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deleted = await Student.findByIdAndDelete(id);
+
+        if (!deleted) {
+            return res.status(404).json({ error: "Student not found" });
+        }
+
+        console.log(`[INFO] Deleted student ID: ${id}`);
+        res.json({ message: "Delete success", id });
+    } catch (e) {
+        console.error("[ERROR] Delete failed:", e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Kết nối MongoDB 
 mongoose.connect('mongodb://localhost:27017/student_db')
     .then(() => console.log("Connect to MongoDB Successfully"))
