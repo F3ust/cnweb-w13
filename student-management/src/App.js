@@ -3,59 +3,54 @@ import axios from 'axios';
 import './App.css';
 
 function App() {
+  // State management
   const [students, setStudents] = useState([]);
   const [formData, setFormData] = useState({ name: '', age: '', stuClass: '' });
-  
-  // State tracking: null = Add Mode, string (ID) = Edit Mode
   const [editingId, setEditingId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Constants
   const API_URL = 'http://localhost:5001/api/students';
 
-  // [READ] Init: Fetch data when component mounts
+  // Fetch initial data on component mount
   useEffect(() => {
     axios.get(API_URL)
       .then(res => {
         setStudents(res.data);
-        console.log("[INFO] Data fetched successfully");
       })
-      .catch(err => console.error("[ERROR] Fetch failed:", err));
+      .catch(err => console.error("Fetch error:", err));
   }, []);
 
-  // Handler: Input change (Controlled Component)
+  // Filter students based on search term (Client-side)
+  const filteredStudents = students.filter(student => 
+    student.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Update form state on input change
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  /**
-   * Action: Populate form for Editing
-   */
+  // Switch to edit mode and populate form
   const startEditing = (student) => {
     setEditingId(student._id);
     setFormData({
       name: student.name,
       age: student.age,
-      stuClass: student.class // Map DB 'class' -> Form 'stuClass'
+      stuClass: student.class
     });
   };
 
-  /**
-   * Action: Reset Form & Exit Edit Mode
-   */
+  // Reset form to default add mode
   const resetForm = () => {
     setEditingId(null);
     setFormData({ name: '', age: '', stuClass: '' });
   };
 
-  /**
-   * [CREATE] & [UPDATE] Handler
-   * Logic: Check 'editingId' to decide POST or PUT
-   */
+  // Handle form submission (Create or Update)
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Prepare Payload (Ensure types match DB Schema)
     const payload = {
       name: formData.name,
       age: Number(formData.age),
@@ -64,45 +59,32 @@ function App() {
 
     try {
       if (editingId) {
-        // --- UPDATE FLOW (PUT) ---
+        // Update existing record
         const res = await axios.put(`${API_URL}/${editingId}`, payload);
-        
-        // Optimistic Update: Modify item in local state
         setStudents(prev => prev.map(s => s._id === editingId ? res.data : s));
-        console.log("[INFO] Student updated:", res.data);
-        
         resetForm();
       } else {
-        // --- CREATE FLOW (POST) ---
+        // Create new record
         const res = await axios.post(API_URL, payload);
-        
-        // Optimistic Update: Append new item
         setStudents(prev => [...prev, res.data]);
-        console.log("[INFO] Student added:", res.data);
-        
         resetForm();
       }
     } catch (err) {
-      console.error("[ERROR] Submit failed:", err);
-      alert("Lỗi: Kiểm tra Console để biết chi tiết.");
+      console.error("Submit error:", err);
+      alert("Error processing request.");
     }
   };
 
-  /**
-   * [DELETE] Handler
-   */
+  // Handle delete operation with confirmation
   const handleDelete = async (id) => {
     if (!window.confirm("Bạn có chắc chắn muốn xóa học sinh này không?")) return;
 
     try {
       await axios.delete(`${API_URL}/${id}`);
-      
-      // Update UI: Filter out deleted item
       setStudents(prev => prev.filter(s => s._id !== id));
-      console.log(`[INFO] Deleted ID: ${id}`);
     } catch (err) {
-      console.error("[ERROR] Delete failed:", err);
-      alert("Không thể xóa. Kiểm tra Console.");
+      console.error("Delete error:", err);
+      alert("Error deleting record.");
     }
   };
 
@@ -110,7 +92,7 @@ function App() {
     <div className="App">
       <h1>Quản Lý Học Sinh</h1>
 
-      {/* --- FORM SECTION --- */}
+      {/* Input Form Section */}
       <form className="student-form" onSubmit={handleSubmit}>
         <input
           type="text"
@@ -140,7 +122,6 @@ function App() {
           style={{ flex: 1 }}
         />
         
-        {/* Dynamic Buttons based on Mode */}
         {editingId ? (
           <>
             <button type="submit" className="btn-update">Cập nhật</button>
@@ -151,7 +132,24 @@ function App() {
         )}
       </form>
 
-      {/* --- TABLE SECTION --- */}
+      {/* Search Section */}
+      <div style={{ marginBottom: '16px' }}>
+        <input 
+          type="text" 
+          placeholder="Tìm kiếm theo tên..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ 
+            width: '100%', 
+            padding: '10px', 
+            borderRadius: '4px', 
+            border: '1px solid #dadce0',
+            boxSizing: 'border-box'
+          }}
+        />
+      </div>
+
+      {/* Data Table Section */}
       <table>
         <thead>
           <tr>
@@ -162,8 +160,8 @@ function App() {
           </tr>
         </thead>
         <tbody>
-          {students.length > 0 ? (
-            students.map((s) => (
+          {filteredStudents.length > 0 ? (
+            filteredStudents.map((s) => (
               <tr key={s._id} className={editingId === s._id ? 'editing-row' : ''}>
                 <td>{s.name}</td>
                 <td>{s.age}</td>
@@ -190,7 +188,7 @@ function App() {
           ) : (
             <tr>
               <td colSpan="4" style={{ textAlign: "center", color: "#5f6368" }}>
-                Chưa có dữ liệu hiển thị
+                {searchTerm ? "Không tìm thấy kết quả" : "Chưa có dữ liệu hiển thị"}
               </td>
             </tr>
           )}
