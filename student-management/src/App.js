@@ -5,13 +5,16 @@ import './App.css';
 function App() {
   const [students, setStudents] = useState([]);
   const [formData, setFormData] = useState({ name: '', age: '', stuClass: '' });
+  
+  // State to track editing mode (null = add mode, string = edit mode)
+  const [editingId, setEditingId] = useState(null);
 
   // Init: Fetch data
   useEffect(() => {
-    axios.get('http://localhost:5001/api/students')
+    axios.get('http://localhost:5000/api/students')
       .then(res => {
         setStudents(res.data);
-        console.log("[INFO] Data fetched successfully"); // Log English
+        console.log("[INFO] Data fetched successfully");
       })
       .catch(err => console.error("[ERROR] Fetch failed:", err));
   }, []);
@@ -22,26 +25,59 @@ function App() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Handler: Submit form
-  const handleAddStudent = async (e) => {
-    e.preventDefault();
-    try {
-      const payload = {
-        name: formData.name,
-        age: Number(formData.age),
-        class: formData.stuClass
-      };
+  /**
+   * Action: Populate form with selected student data
+   * Switch to Edit Mode
+   */
+  const startEditing = (student) => {
+    setEditingId(student._id);
+    setFormData({
+      name: student.name,
+      age: student.age,
+      stuClass: student.class
+    });
+    // Optional: Focus back to input for better UX
+    document.querySelector('input[name="name"]').focus();
+  };
 
-      const res = await axios.post('http://localhost:5001/api/students', payload);
-      
-      console.log("[INFO] Student added:", res.data); // Log English
-      
-      // Update UI & Reset form
-      setStudents(prev => [...prev, res.data]);
-      setFormData({ name: '', age: '', stuClass: '' });
-      
+  /**
+   * Action: Cancel editing
+   * Reset form & mode
+   */
+  const cancelEditing = () => {
+    setEditingId(null);
+    setFormData({ name: '', age: '', stuClass: '' });
+  };
+
+  // Handler: Submit form (Decide Create or Update)
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      name: formData.name,
+      age: Number(formData.age),
+      class: formData.stuClass
+    };
+
+    try {
+      if (editingId) {
+        // --- UPDATE FLOW ---
+        const res = await axios.put(`http://localhost:5001/api/students/${editingId}`, payload);
+        console.log("[INFO] Student updated:", res.data);
+
+        // Update local list without refetching
+        setStudents(prev => prev.map(s => s._id === editingId ? res.data : s));
+        
+        // Reset mode
+        cancelEditing();
+      } else {
+        // --- CREATE FLOW ---
+        const res = await axios.post('http://localhost:5001/api/students', payload);
+        console.log("[INFO] Student added:", res.data);
+        setStudents(prev => [...prev, res.data]);
+        setFormData({ name: '', age: '', stuClass: '' });
+      }
     } catch (err) {
-      console.error("[ERROR] Add student failed:", err);
+      console.error("[ERROR] Submit failed:", err);
       alert("Error: Check console for details.");
     }
   };
@@ -50,8 +86,8 @@ function App() {
     <div className="App">
       <h1>Quản Lý Học Sinh</h1>
 
-      {/* Input Form */}
-      <form className="student-form" onSubmit={handleAddStudent}>
+      {/* Input Form (Reusable for both Add & Edit) */}
+      <form className="student-form" onSubmit={handleSubmit}>
         <input
           type="text"
           name="name"
@@ -79,7 +115,16 @@ function App() {
           required
           style={{ flex: 1 }}
         />
-        <button type="submit">Thêm mới</button>
+        
+        {/* Dynamic Buttons */}
+        {editingId ? (
+          <>
+            <button type="submit" className="btn-update">Cập nhật</button>
+            <button type="button" className="btn-cancel" onClick={cancelEditing}>Hủy</button>
+          </>
+        ) : (
+          <button type="submit">Thêm mới</button>
+        )}
       </form>
 
       {/* Data Table */}
@@ -89,24 +134,26 @@ function App() {
             <th>Họ Tên</th>
             <th>Tuổi</th>
             <th>Lớp</th>
+            <th style={{ width: '100px' }}>Thao tác</th>
           </tr>
         </thead>
         <tbody>
-          {students.length > 0 ? (
-            students.map((s) => (
-              <tr key={s._id}>
-                <td>{s.name}</td>
-                <td>{s.age}</td>
-                <td>{s.class}</td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="3" style={{ textAlign: "center", color: "#5f6368" }}>
-                Chưa có dữ liệu hiển thị
+          {students.map((s) => (
+            <tr key={s._id} className={editingId === s._id ? 'editing-row' : ''}>
+              <td>{s.name}</td>
+              <td>{s.age}</td>
+              <td>{s.class}</td>
+              <td>
+                <button 
+                  className="btn-icon" 
+                  onClick={() => startEditing(s)}
+                  disabled={editingId === s._id} // Disable if currently editing this row
+                >
+                  Sửa
+                </button>
               </td>
             </tr>
-          )}
+          ))}
         </tbody>
       </table>
     </div>

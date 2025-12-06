@@ -83,3 +83,45 @@ td {
 tr:last-child td {
   border-bottom: none;
 }
+
+/* Button Variants */
+.btn-update {
+  background-color: #188038; /* Google Green */
+}
+.btn-update:hover {
+  background-color: #137333;
+}
+
+.btn-cancel {
+  background-color: transparent;
+  color: #5f6368;
+  border: 1px solid #dadce0;
+  margin-left: 8px;
+}
+.btn-cancel:hover {
+  background-color: #f1f3f4;
+  color: #202124;
+}
+
+/* Table Action Buttons */
+.btn-icon {
+  background-color: transparent;
+  color: #1a73e8;
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid #dadce0; /* Slight border for visibility */
+}
+.btn-icon:hover {
+  background-color: #e8f0fe; /* Light blue background */
+  box-shadow: none;
+}
+.btn-icon:disabled {
+  color: #dadce0;
+  cursor: default;
+  background: none;
+}
+
+/* Highlight row being edited */
+.editing-row {
+  background-color: #e8f0fe; /* Google selection blue */
+}
