@@ -10,13 +10,6 @@ const PORT = 5001;
 app.use(cors());
 app.use(express.json()); 
 
-app.use((req, res, next) => {
-    console.log("🔍 [DEBUG] Method:", req.method);
-    console.log("🔍 [DEBUG] Content-Type:", req.headers['content-type']);
-    console.log("🔍 [DEBUG] Body nhận được:", req.body);
-    next();
-});
-
 /**
  * [POST] /api/students
  * Create new student record
