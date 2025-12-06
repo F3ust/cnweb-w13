@@ -7,50 +7,57 @@ function App() {
   const [students, setStudents] = useState([]);
   const [formData, setFormData] = useState({ name: '', age: '', stuClass: '' });
   const [editingId, setEditingId] = useState(null);
+  
+  // Search & Sort States
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortOrder, setSortOrder] = useState('asc'); // 'asc' | 'desc'
 
   const API_URL = 'http://localhost:5001/api/students';
 
-  // Fetch initial data on component mount
+  // Fetch initial data
   useEffect(() => {
     axios.get(API_URL)
-      .then(res => {
-        setStudents(res.data);
-      })
+      .then(res => setStudents(res.data))
       .catch(err => console.error("Fetch error:", err));
   }, []);
 
-  // Filter students based on search term (Client-side)
-  const filteredStudents = students.filter(student => 
-    student.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Computed: Filter by Search Term -> Then Sort by Name
+  const displayedStudents = students
+    .filter(student => 
+      student.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      // Use localeCompare for correct Vietnamese string comparison
+      if (sortOrder === 'asc') {
+        return a.name.localeCompare(b.name);
+      } else {
+        return b.name.localeCompare(a.name);
+      }
+    });
 
-  // Update form state on input change
+  // Toggle sort order
+  const handleSortToggle = () => {
+    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+  };
+
+  // Form Handlers
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Switch to edit mode and populate form
   const startEditing = (student) => {
     setEditingId(student._id);
-    setFormData({
-      name: student.name,
-      age: student.age,
-      stuClass: student.class
-    });
+    setFormData({ name: student.name, age: student.age, stuClass: student.class });
   };
 
-  // Reset form to default add mode
   const resetForm = () => {
     setEditingId(null);
     setFormData({ name: '', age: '', stuClass: '' });
   };
 
-  // Handle form submission (Create or Update)
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     const payload = {
       name: formData.name,
       age: Number(formData.age),
@@ -59,12 +66,10 @@ function App() {
 
     try {
       if (editingId) {
-        // Update existing record
         const res = await axios.put(`${API_URL}/${editingId}`, payload);
         setStudents(prev => prev.map(s => s._id === editingId ? res.data : s));
         resetForm();
       } else {
-        // Create new record
         const res = await axios.post(API_URL, payload);
         setStudents(prev => [...prev, res.data]);
         resetForm();
@@ -75,10 +80,8 @@ function App() {
     }
   };
 
-  // Handle delete operation with confirmation
   const handleDelete = async (id) => {
     if (!window.confirm("Bạn có chắc chắn muốn xóa học sinh này không?")) return;
-
     try {
       await axios.delete(`${API_URL}/${id}`);
       setStudents(prev => prev.filter(s => s._id !== id));
@@ -92,7 +95,7 @@ function App() {
     <div className="App">
       <h1>Quản Lý Học Sinh</h1>
 
-      {/* Input Form Section */}
+      {/* Input Form */}
       <form className="student-form" onSubmit={handleSubmit}>
         <input
           type="text"
@@ -132,36 +135,36 @@ function App() {
         )}
       </form>
 
-      {/* Search Section */}
-      <div style={{ marginBottom: '16px' }}>
+      {/* Toolbar: Search + Sort */}
+      <div className="toolbar-container">
         <input 
           type="text" 
           placeholder="Tìm kiếm theo tên..." 
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ 
-            width: '100%', 
-            padding: '10px', 
-            borderRadius: '4px', 
-            border: '1px solid #dadce0',
-            boxSizing: 'border-box'
-          }}
+          className="search-input"
         />
+        
+        <button type="button" onClick={handleSortToggle} className="btn-sort">
+          Sắp xếp: {sortOrder === 'asc' ? 'A → Z' : 'Z → A'}
+        </button>
       </div>
 
-      {/* Data Table Section */}
+      {/* Data Table */}
       <table>
         <thead>
           <tr>
-            <th>Họ Tên</th>
+            <th onClick={handleSortToggle} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              Họ Tên {sortOrder === 'asc' ? '▲' : '▼'}
+            </th>
             <th>Tuổi</th>
             <th>Lớp</th>
             <th style={{ width: "140px" }}>Thao tác</th>
           </tr>
         </thead>
         <tbody>
-          {filteredStudents.length > 0 ? (
-            filteredStudents.map((s) => (
+          {displayedStudents.length > 0 ? (
+            displayedStudents.map((s) => (
               <tr key={s._id} className={editingId === s._id ? 'editing-row' : ''}>
                 <td>{s.name}</td>
                 <td>{s.age}</td>

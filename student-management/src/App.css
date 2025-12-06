@@ -125,3 +125,56 @@ tr:last-child td {
 .editing-row {
   background-color: #e8f0fe; /* Google selection blue */
 }
+
+/* Delete Button (Danger) */
+.btn-delete {
+  background-color: white;
+  color: #d93025; /* Google Red */
+  border: 1px solid #dadce0;
+  padding: 6px 16px;
+  font-size: 13px;
+}
+
+.btn-delete:hover {
+  background-color: #fce8e6; /* Light Red bg on hover */
+  border-color: #d93025;
+  box-shadow: none; /* Override shadow mặc định */
+}
+
+/* Toolbar Layout */
+.toolbar-container {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+/* Search Input styling within Toolbar */
+.search-input {
+  flex: 1; /* Chiếm hết khoảng trống còn lại */
+  padding: 10px 12px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  font-size: 14px;
+}
+.search-input:focus {
+  border-color: #1a73e8;
+  outline: none;
+}
+
+/* Sort Button Styling */
+.btn-sort {
+  background-color: white;
+  color: #1a73e8; /* Google Blue Text */
+  border: 1px solid #dadce0;
+  min-width: 140px; /* Độ rộng cố định để tránh nhảy layout khi text đổi */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.btn-sort:hover {
+  background-color: #f8f9fa; /* Light Gray hover */
+  border-color: #dadce0;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+}
